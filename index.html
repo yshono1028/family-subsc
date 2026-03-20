@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0F0F1A">
+<title>サブスク管理</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CSS Variables & Reset
+   ============================================================ */
+:root {
+  --bg:        #0F0F1A;
+  --surface:   rgba(255,255,255,0.05);
+  --surface2:  rgba(255,255,255,0.08);
+  --border:    rgba(255,255,255,0.06);
+  --text:      #ffffff;
+  --text-dim:  rgba(255,255,255,0.4);
+  --text-dim2: rgba(255,255,255,0.25);
+  --papa:      #6C9BCF;
+  --mama:      #F2A7C3;
+  --accent:    #A66CFF;
+  --danger:    #FF6B6B;
+  --success:   #4ECDC4;
+  --radius:    16px;
+  --radius-sm: 12px;
+  --font-ja:   'Zen Kaku Gothic New', sans-serif;
+  --font-num:  'Outfit', sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{overscroll-behavior:none}
+body{
+  font-family:var(--font-ja);background:var(--bg);color:var(--text);
+  min-height:100vh;min-height:100dvh;
+  max-width:430px;margin:0 auto;position:relative;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse at 25% 15%,rgba(108,155,207,.1) 0%,transparent 55%),
+    radial-gradient(ellipse at 75% 85%,rgba(242,167,195,.07) 0%,transparent 55%);
+}
+button{cursor:pointer;border:none;background:none;font-family:var(--font-ja)}
+input,select{font-family:var(--font-ja)}
+
+/* ============================================================
+   Layout
+   ============================================================ */
+#app{position:relative;z-index:1;padding-bottom:calc(80px + var(--safe-bottom))}
+
+.header{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center}
+.header-sub{font-family:var(--font-num);font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);font-weight:500}
+.header-main{font-size:22px;font-weight:700;margin-top:2px;background:linear-gradient(135deg,var(--papa),var(--mama));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+/* ---- Filter Pills ---- */
+.pills{display:flex;gap:8px;padding:14px 20px}
+.pill{
+  padding:8px 18px;border-radius:20px;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);color:var(--text-dim);font-size:13px;font-weight:500;
+  transition:all .25s ease;
+}
+.pill.on{background:var(--surface2);color:#fff;border-color:rgba(255,255,255,.2);box-shadow:0 0 18px rgba(255,255,255,.04)}
+
+/* ---- Summary Cards ---- */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 20px;margin-bottom:18px}
+.card{
+  background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+  border:1px solid var(--border);border-radius:var(--radius);padding:16px;
+  backdrop-filter:blur(10px);transition:transform .25s ease;
+}
+.card:active{transform:scale(.97)}
+.card-label{font-size:11px;color:var(--text-dim);margin-bottom:5px;letter-spacing:.4px}
+.card-value{font-family:var(--font-num);font-size:24px;font-weight:700}
+.card-sub{font-size:11px;color:var(--text-dim2);margin-top:2px}
+
+/* ---- Next Billing ---- */
+.next{
+  background:linear-gradient(135deg,rgba(108,155,207,.12),rgba(166,108,255,.08));
+  border:1px solid rgba(108,155,207,.15);border-radius:var(--radius);
+  padding:14px 16px;margin:0 20px 18px;display:flex;align-items:center;gap:12px;
+}
+.next-icon{font-size:26px;flex-shrink:0}
+.next-info{flex:1}
+.next-label{font-size:11px;color:var(--text-dim)}
+.next-name{font-size:14px;font-weight:700}
+.next-date{font-family:var(--font-num);font-size:13px;font-weight:600;color:var(--papa);white-space:nowrap}
+
+/* ---- Chart Section ---- */
+.chart-wrap{padding:0 20px;margin-bottom:22px}
+.chart-box{
+  background:linear-gradient(145deg,var(--surface),rgba(255,255,255,.01));
+  border:1px solid var(--border);border-radius:20px;padding:22px;
+  display:flex;align-items:center;gap:18px;
+}
+.legend{flex:1}
+.legend-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px;color:rgba(255,255,255,.7)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.legend-val{margin-left:auto;font-family:var(--font-num);font-weight:600;color:rgba(255,255,255,.9)}
+
+/* ---- Section Title ---- */
+.sec-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.5);padding:0 20px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+
+/* ---- Subscription List ---- */
+.list{padding:0 20px}
+.item{
+  background:linear-gradient(145deg,var(--surface),rgba(255,255,255,.015));
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;
+  transition:all .2s ease;animation:slideUp .35s ease both;
+}
+.item:active{background:rgba(255,255,255,.08);transform:translateX(3px)}
+.item.off{opacity:.35}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.item-icon{width:42px;height:42px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.item-info{flex:1;min-width:0}
+.item-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-meta{font-size:11px;color:var(--text-dim);display:flex;gap:8px;align-items:center;margin-top:2px}
+.item-price{font-family:var(--font-num);font-size:16px;font-weight:700;white-space:nowrap}
+.badge{display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700}
+.badge-p{background:rgba(108,155,207,.2);color:var(--papa)}
+.badge-m{background:rgba(242,167,195,.2);color:var(--mama)}
+
+/* ---- Bottom Nav ---- */
+.bnav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;
+  background:rgba(15,15,26,.95);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;
+  padding:10px 0 calc(14px + var(--safe-bottom));z-index:100;
+}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:10px;font-weight:500;transition:color .2s}
+.bnav-item.on{color:#fff}
+.bnav-item span:first-child{font-size:22px}
+.bnav-add{
+  width:50px;height:50px;border-radius:50%;
+  background:linear-gradient(135deg,var(--papa),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;
+  box-shadow:0 4px 20px rgba(108,155,207,.35);
+  transition:transform .15s,box-shadow .15s;margin-top:-18px;
+}
+.bnav-add:active{transform:scale(1.12);box-shadow:0 6px 28px rgba(108,155,207,.5)}
+
+/* ---- Modal ---- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  width:100%;max-width:430px;background:#1A1A2E;border-radius:24px 24px 0 0;
+  padding:20px 20px calc(32px + var(--safe-bottom));max-height:88dvh;overflow-y:auto;
+  animation:slideModal .3s ease;
+}
+@keyframes slideModal{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-bar{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);margin:0 auto 18px}
+.modal-title{font-size:18px;font-weight:700;text-align:center;margin-bottom:18px}
+
+/* ---- Form ---- */
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:12px;color:var(--text-dim);margin-bottom:5px;font-weight:500}
+.fi{
+  width:100%;padding:12px 14px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-sm);
+  color:#fff;font-size:14px;outline:none;transition:border-color .25s;
+}
+.fi:focus{border-color:rgba(108,155,207,.5)}
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cat-btn{
+  padding:10px 4px;border-radius:10px;border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.03);color:var(--text-dim);font-size:11px;text-align:center;
+  transition:all .2s;
+}
+.cat-btn.on{border-color:rgba(108,155,207,.5);background:rgba(108,155,207,.15);color:#fff}
+.cat-btn em{font-style:normal;font-size:18px;display:block;margin-bottom:2px}
+.user-btns{display:flex;gap:10px}
+.ubtn{
+  flex:1;padding:12px;border-radius:var(--radius-sm);
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);
+  color:var(--text-dim);font-size:14px;font-weight:600;transition:all .2s;
+}
+.ubtn.sel-p{border-color:rgba(108,155,207,.5);background:rgba(108,155,207,.15);color:var(--papa)}
+.ubtn.sel-m{border-color:rgba(242,167,195,.5);background:rgba(242,167,195,.15);color:var(--mama)}
+
+.btn-primary{
+  width:100%;padding:14px;border-radius:14px;
+  background:linear-gradient(135deg,var(--papa),var(--accent));
+  color:#fff;font-size:15px;font-weight:700;margin-top:8px;transition:opacity .2s;
+}
+.btn-primary:active{opacity:.85}
+.btn-danger{
+  width:100%;padding:14px;border-radius:14px;
+  border:1px solid rgba(255,107,107,.3);background:rgba(255,107,107,.1);
+  color:var(--danger);font-size:14px;font-weight:600;margin-top:8px;
+}
+.btn-sec{
+  width:100%;padding:14px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);
+  color:rgba(255,255,255,.7);font-size:14px;font-weight:600;margin-top:8px;
+}
+.btn-green{
+  width:100%;padding:14px;border-radius:14px;
+  border:1px solid rgba(78,205,196,.3);background:rgba(78,205,196,.1);
+  color:var(--success);font-size:14px;font-weight:600;margin-top:8px;
+}
+
+/* ---- Detail ---- */
+.det-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.det-icon{width:56px;height:56px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:28px}
+.det-name{font-size:20px;font-weight:800}
+.det-row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:14px}
+.det-row-l{color:var(--text-dim)}
+.det-row-v{font-weight:600}
+
+/* ---- Confirm ---- */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s}
+.confirm-box{background:#1A1A2E;border-radius:20px;padding:28px 24px;max-width:320px;width:100%;text-align:center}
+.confirm-icon{font-size:40px;margin-bottom:10px}
+.confirm-title{font-size:17px;font-weight:700;margin-bottom:6px}
+.confirm-msg{font-size:13px;color:var(--text-dim);margin-bottom:18px;line-height:1.5}
+.confirm-btns{display:flex;gap:10px}
+.cbtn{flex:1;padding:12px;border-radius:var(--radius-sm);font-size:14px;font-weight:600}
+.cbtn-cancel{background:rgba(255,255,255,.08);color:rgba(255,255,255,.6)}
+.cbtn-ok{background:rgba(255,107,107,.2);color:var(--danger)}
+.cbtn-green{background:rgba(78,205,196,.2);color:var(--success)}
+
+/* ---- Toast ---- */
+.toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:400;
+  background:rgba(30,30,50,.95);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 20px;font-size:13px;font-weight:500;color:#fff;
+  backdrop-filter:blur(12px);box-shadow:0 8px 30px rgba(0,0,0,.4);
+  animation:toastIn .3s ease;pointer-events:none;
+}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ---- Loading ---- */
+.loading{text-align:center;padding:60px 20px;color:var(--text-dim)}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--papa);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---- Setup Screen ---- */
+.setup{padding:40px 24px;text-align:center}
+.setup h2{font-size:20px;font-weight:700;margin-bottom:8px}
+.setup p{font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:20px}
+.setup .fi{margin-bottom:14px}
+.setup-hint{font-size:11px;color:var(--text-dim2);text-align:left;margin-bottom:16px;line-height:1.5}
+
+/* ---- Empty ---- */
+.empty{text-align:center;padding:40px 20px;color:var(--text-dim)}
+.empty-icon{font-size:48px;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ============================================================
+//  CONFIG — Google Apps Script URL
+// ============================================================
+const STORAGE_KEY = 'subscrip_gas_url';
+let GAS_URL = localStorage.getItem(STORAGE_KEY) || '';
+
+// ============================================================
+//  Categories
+// ============================================================
+const CAT = {
+  entertainment: {l:'エンタメ',   i:'🎬', c:'#FF6B6B'},
+  music:         {l:'音楽',       i:'🎵', c:'#A66CFF'},
+  shopping:      {l:'ショッピング',i:'🛍️',c:'#F7C948'},
+  cloud:         {l:'クラウド',   i:'☁️', c:'#4ECDC4'},
+  fitness:       {l:'フィットネス',i:'💪',c:'#45B7D1'},
+  news:          {l:'ニュース',   i:'📰', c:'#96CEB4'},
+  learning:      {l:'学習',       i:'📚', c:'#FF8A5C'},
+  other:         {l:'その他',     i:'📦', c:'#B0B0B0'},
+};
+
+// ============================================================
+//  State
+// ============================================================
+let subs = [];
+let filter = 'all';
+let view = 'dashboard'; // dashboard | list | add | setup
+let detailSub = null;
+let editSub = null;
+let confirmSub = null;
+let toastMsg = '';
+let toastTimer = null;
+let loading = false;
+
+// ============================================================
+//  API helpers
+// ============================================================
+async function apiGet() {
+  const res = await fetch(GAS_URL);
+  const json = await res.json();
+  return json.data || [];
+}
+
+async function apiPost(body) {
+  // GAS の doPost は redirect を返すため mode: 'no-cors' が必要な場合がある
+  // しかし 'no-cors' だとレスポンスが読めないため、まずは通常 fetch を試す
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain'},
+      body: JSON.stringify(body),
+    });
+    return await res.json();
+  } catch {
+    // リダイレクト対応: follow redirect
+    const res2 = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      redirect: 'follow',
+    });
+    try { return await res2.json(); } catch { return {status:'ok'}; }
+  }
+}
+
+async function loadData() {
+  loading = true; render();
+  try {
+    subs = await apiGet();
+  } catch(e) {
+    console.error(e);
+    toast('データの読み込みに失敗しました');
+  }
+  loading = false; render();
+}
+
+// ============================================================
+//  Toast
+// ============================================================
+function toast(msg) {
+  toastMsg = msg; render();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastMsg = ''; render(); }, 2200);
+}
+
+// ============================================================
+//  Donut SVG
+// ============================================================
+function donutSVG(data, size=150) {
+  const total = data.reduce((s,d)=>s+d.v,0);
+  if (total === 0) return `<svg width="${size}" height="${size}"></svg>`;
+  let cum = 0;
+  const sw = 22, r = (size-sw)/2, C = 2*Math.PI*r, cx=size/2, cy=size/2;
+  let arcs = '';
+  data.forEach(d => {
+    const ratio = d.v/total;
+    const da = `${C*ratio} ${C*(1-ratio)}`;
+    const off = -C*cum + C*0.25;
+    arcs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.c}" stroke-width="${sw}" stroke-dasharray="${da}" stroke-dashoffset="${off}" stroke-linecap="round" style="filter:drop-shadow(0 0 4px ${d.c}50)"/>`;
+    cum += ratio;
+  });
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="${sw}"/>
+    ${arcs}
+    <text x="${cx}" y="${cy-8}" text-anchor="middle" fill="white" font-size="11" font-family="'Zen Kaku Gothic New'" opacity=".6">月額合計</text>
+    <text x="${cx}" y="${cy+16}" text-anchor="middle" fill="white" font-size="22" font-weight="700" font-family="'Outfit'">¥${total.toLocaleString()}</text>
+  </svg>`;
+}
+
+// ============================================================
+//  Render
+// ============================================================
+function render() {
+  const app = document.getElementById('app');
+
+  // --- Setup screen ---
+  if (!GAS_URL) {
+    view = 'setup';
+    app.innerHTML = renderSetup();
+    bindSetup();
+    return;
+  }
+
+  let html = '';
+
+  if (view === 'dashboard') html = renderDashboard();
+  else if (view === 'list') html = renderList();
+  else if (view === 'add') html = renderAddForm();
+
+  html += renderBottomNav();
+  if (detailSub) html += renderDetail();
+  if (editSub) html += renderEditForm();
+  if (confirmSub) html += renderConfirm();
+  if (toastMsg) html += `<div class="toast">${esc(toastMsg)}</div>`;
+
+  app.innerHTML = html;
+  bindEvents();
+}
+
+// ============================================================
+//  Setup Screen
+// ============================================================
+function renderSetup() {
+  return `<div class="setup">
+    <div style="font-size:48px;margin-bottom:16px">📋</div>
+    <h2>サブスク管理をはじめる</h2>
+    <p>Google Apps Script の URL を入力してください</p>
+    <input class="fi" id="gas-input" placeholder="https://script.google.com/macros/s/..." value="">
+    <div class="setup-hint">
+      📌 セットアップ手順：<br>
+      1. Google スプレッドシートを作成<br>
+      2. シート名を「サブスク」に変更<br>
+      3. ヘッダー行に id, name, price, category, user, billingDate, active, note を入力<br>
+      4. 拡張機能 → Apps Script でコードを貼り付け<br>
+      5. デプロイ → ウェブアプリとして公開<br>
+      6. 表示された URL を上に貼り付け
+    </div>
+    <button class="btn-primary" id="gas-save">接続する</button>
+    <button class="btn-sec" id="gas-demo" style="margin-top:10px">デモモードで試す</button>
+  </div>`;
+}
+
+function bindSetup() {
+  const saveBtn = document.getElementById('gas-save');
+  const demoBtn = document.getElementById('gas-demo');
+  if (saveBtn) saveBtn.onclick = () => {
+    const url = document.getElementById('gas-input').value.trim();
+    if (!url) { toast('URLを入力してください'); return; }
+    GAS_URL = url;
+    localStorage.setItem(STORAGE_KEY, url);
+    view = 'dashboard';
+    loadData();
+  };
+  if (demoBtn) demoBtn.onclick = () => {
+    GAS_URL = 'demo';
+    subs = [
+      {id:'1',name:'Netflix',price:1490,category:'entertainment',user:'パパ',billingDate:15,active:true,note:'スタンダードプラン'},
+      {id:'2',name:'Amazon Prime',price:600,category:'shopping',user:'ママ',billingDate:3,active:true,note:'送料無料＋Prime Video'},
+      {id:'3',name:'Spotify Family',price:1680,category:'music',user:'パパ',billingDate:20,active:true,note:'家族6人まで'},
+      {id:'4',name:'iCloud+ 200GB',price:400,category:'cloud',user:'ママ',billingDate:10,active:true,note:'写真バックアップ用'},
+      {id:'5',name:'YouTube Premium',price:1280,category:'entertainment',user:'パパ',billingDate:8,active:true,note:'広告なし＋Music'},
+      {id:'6',name:'Disney+',price:990,category:'entertainment',user:'ママ',billingDate:22,active:true,note:'子供向けコンテンツ充実'},
+      {id:'7',name:'日経電子版',price:4277,category:'news',user:'パパ',billingDate:1,active:true,note:'仕事の情報収集'},
+      {id:'8',name:'Adobe CC',price:6480,category:'other',user:'パパ',billingDate:5,active:true,note:'Photoshop+Illustrator'},
+      {id:'9',name:'Duolingo Plus',price:1100,category:'learning',user:'ママ',billingDate:12,active:false,note:'英語学習・現在休止中'},
+    ];
+    view = 'dashboard';
+    render();
+  };
+}
+
+// ============================================================
+//  Dashboard
+// ============================================================
+function renderDashboard() {
+  const active = subs.filter(s=>s.active);
+  const inactive = subs.filter(s=>!s.active);
+  const filtered = filter==='all' ? active : active.filter(s=>s.user===filter);
+  const total = filtered.reduce((s,x)=>s+x.price,0);
+  const yearly = total * 12;
+  const sorted = [...filtered].sort((a,b)=>a.billingDate-b.billingDate);
+  const today = new Date().getDate();
+  const next = sorted.find(s=>s.billingDate>=today) || sorted[0];
+
+  // Chart data
+  let chartData;
+  if (filter==='all') {
+    chartData = [
+      {l:'パパ',i:'',c:'#6C9BCF',v:active.filter(s=>s.user==='パパ').reduce((s,x)=>s+x.price,0)},
+      {l:'ママ',i:'',c:'#F2A7C3',v:active.filter(s=>s.user==='ママ').reduce((s,x)=>s+x.price,0)},
+    ].filter(d=>d.v>0);
+  } else {
+    chartData = Object.entries(CAT).map(([k,cat])=>({
+      l:cat.l, i:cat.i, c:cat.c,
+      v:filtered.filter(s=>s.category===k).reduce((s,x)=>s+x.price,0)
+    })).filter(d=>d.v>0);
+  }
+
+  if (loading) return `<div class="header"><div><div class="header-sub">Subscription Manager</div><div class="header-main">家族のサブスク管理</div></div></div><div class="loading"><div class="spinner"></div>読み込み中...</div>`;
+
+  let h = `<div class="header">
+    <div><div class="header-sub">Subscription Manager</div><div class="header-main">家族のサブスク管理</div></div>
+    <div style="font-size:12px;color:rgba(255,255,255,.3);text-align:right">
+      <div style="font-family:var(--font-num);font-size:20px;font-weight:700;color:rgba(255,255,255,.7)">${active.length}</div>契約中
+    </div>
+  </div>`;
+
+  h += `<div class="pills">`;
+  ['all','パパ','ママ'].forEach(f => {
+    const label = f==='all'?'👨‍👩‍👧‍👦 全員':f==='パパ'?'👨 パパ':'👩 ママ';
+    h += `<button class="pill ${filter===f?'on':''}" data-filter="${f}">${label}</button>`;
+  });
+  h += `</div>`;
+
+  h += `<div class="cards">
+    <div class="card"><div class="card-label">月額合計</div><div class="card-value" style="color:var(--papa)">¥${total.toLocaleString()}</div><div class="card-sub">${filtered.length} サービス</div></div>
+    <div class="card"><div class="card-label">年間合計</div><div class="card-value" style="color:var(--mama)">¥${yearly.toLocaleString()}</div><div class="card-sub">見込み額</div></div>
+  </div>`;
+
+  if (next) {
+    const cat = CAT[next.category]||CAT.other;
+    h += `<div class="next">
+      <div class="next-icon">${cat.i}</div>
+      <div class="next-info"><div class="next-label">次の支払い</div><div class="next-name">${esc(next.name)}</div></div>
+      <div class="next-date">毎月${next.billingDate}日 · ¥${next.price.toLocaleString()}</div>
+    </div>`;
+  }
+
+  if (chartData.length) {
+    h += `<div class="chart-wrap"><div class="chart-box">
+      ${donutSVG(chartData)}
+      <div class="legend">${chartData.map(d=>`<div class="legend-row"><div class="legend-dot" style="background:${d.c}"></div><span>${d.i} ${d.l}</span><span class="legend-val">¥${d.v.toLocaleString()}</span></div>`).join('')}</div>
+    </div></div>`;
+  }
+
+  h += `<div class="sec-title">📋 支払いスケジュール</div><div class="list">`;
+  sorted.forEach((s,i) => {
+    const cat = CAT[s.category]||CAT.other;
+    h += `<div class="item" style="animation-delay:${i*.04}s" data-detail="${s.id}">
+      <div class="item-icon" style="background:${cat.c}20">${cat.i}</div>
+      <div class="item-info"><div class="item-name">${esc(s.name)}</div><div class="item-meta"><span class="badge ${s.user==='パパ'?'badge-p':'badge-m'}">${s.user}</span><span>毎月${s.billingDate}日</span></div></div>
+      <div class="item-price">¥${s.price.toLocaleString()}</div>
+    </div>`;
+  });
+  h += `</div>`;
+
+  if (inactive.length) {
+    const filtInactive = filter==='all' ? inactive : inactive.filter(s=>s.user===filter);
+    if (filtInactive.length) {
+      h += `<div class="sec-title" style="margin-top:20px">🚫 停止中のサービス</div><div class="list">`;
+      filtInactive.forEach((s,i) => {
+        const cat = CAT[s.category]||CAT.other;
+        h += `<div class="item off" style="animation-delay:${i*.04}s" data-detail="${s.id}">
+          <div class="item-icon" style="background:${cat.c}15">${cat.i}</div>
+          <div class="item-info"><div class="item-name">${esc(s.name)}</div><div class="item-meta"><span class="badge ${s.user==='パパ'?'badge-p':'badge-m'}">${s.user}</span><span>停止中</span></div></div>
+          <div class="item-price" style="color:rgba(255,255,255,.3)">¥${s.price.toLocaleString()}</div>
+        </div>`;
+      });
+      h += `</div>`;
+    }
+  }
+
+  return h;
+}
+
+// ============================================================
+//  List View
+// ============================================================
+function renderList() {
+  const all = filter==='all' ? [...subs] : subs.filter(s=>s.user===filter);
+  all.sort((a,b)=>b.price-a.price);
+
+  let h = `<div class="header"><div><div class="header-sub">All Services</div><div class="header-main">サービス一覧</div></div></div>`;
+  h += `<div class="pills">`;
+  ['all','パパ','ママ'].forEach(f => {
+    const label = f==='all'?'全員':f;
+    h += `<button class="pill ${filter===f?'on':''}" data-filter="${f}">${label}</button>`;
+  });
+  h += `</div><div class="list">`;
+
+  all.forEach((s,i) => {
+    const cat = CAT[s.category]||CAT.other;
+    h += `<div class="item ${s.active?'':'off'}" style="animation-delay:${i*.03}s" data-detail="${s.id}">
+      <div class="item-icon" style="background:${cat.c}20">${cat.i}</div>
+      <div class="item-info"><div class="item-name">${esc(s.name)}</div><div class="item-meta"><span class="badge ${s.user==='パパ'?'badge-p':'badge-m'}">${s.user}</span><span>${s.active?'毎月'+s.billingDate+'日':'停止中'}</span></div></div>
+      <div class="item-price" style="color:${s.active?'#fff':'rgba(255,255,255,.3)'}">¥${s.price.toLocaleString()}</div>
+    </div>`;
+  });
+  h += `</div>`;
+  return h;
+}
+
+// ============================================================
+//  Add Form
+// ============================================================
+function renderAddForm() {
+  let h = `<div class="header"><div><div class="header-sub">New Subscription</div><div class="header-main">サブスクを追加</div></div>
+    <button style="color:rgba(255,255,255,.5);font-size:14px" data-action="cancel-add">キャンセル</button></div>`;
+  h += `<div style="padding:18px 20px">`;
+  h += `<div class="fg"><label class="fl">サービス名 *</label><input class="fi" id="f-name" placeholder="例: Netflix"></div>`;
+  h += `<div class="fg"><label class="fl">月額料金（円）*</label><input class="fi" id="f-price" type="number" placeholder="例: 1490"></div>`;
+  h += `<div class="fg"><label class="fl">カテゴリ</label><div class="cat-grid">`;
+  Object.entries(CAT).forEach(([k,c])=>{
+    h += `<button class="cat-btn ${k==='entertainment'?'on':''}" data-cat="${k}"><em>${c.i}</em>${c.l}</button>`;
+  });
+  h += `</div></div>`;
+  h += `<div class="fg"><label class="fl">契約者</label><div class="user-btns">
+    <button class="ubtn sel-p" data-user="パパ">👨 パパ</button>
+    <button class="ubtn" data-user="ママ">👩 ママ</button>
+  </div></div>`;
+  h += `<div class="fg"><label class="fl">支払日（毎月）</label><input class="fi" id="f-date" type="number" min="1" max="31" placeholder="例: 15"></div>`;
+  h += `<div class="fg"><label class="fl">メモ</label><input class="fi" id="f-note" placeholder="例: ファミリープラン"></div>`;
+  h += `<button class="btn-primary" data-action="submit-add">追加する</button>`;
+  h += `</div>`;
+  return h;
+}
+
+// ============================================================
+//  Detail Modal
+// ============================================================
+function renderDetail() {
+  const s = detailSub;
+  const cat = CAT[s.category]||CAT.other;
+  let h = `<div class="overlay" data-close="detail"><div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-bar"></div>
+    <div class="det-head">
+      <div class="det-icon" style="background:${cat.c}20">${cat.i}</div>
+      <div><div class="det-name">${esc(s.name)}</div><span class="badge ${s.user==='パパ'?'badge-p':'badge-m'}">${s.user==='パパ'?'👨 パパ':'👩 ママ'}</span></div>
+    </div>`;
+  h += `<div class="det-row"><span class="det-row-l">月額料金</span><span class="det-row-v" style="font-family:var(--font-num);font-size:18px">¥${s.price.toLocaleString()}</span></div>`;
+  h += `<div class="det-row"><span class="det-row-l">年間コスト</span><span class="det-row-v" style="font-family:var(--font-num);color:var(--mama)">¥${(s.price*12).toLocaleString()}</span></div>`;
+  h += `<div class="det-row"><span class="det-row-l">カテゴリ</span><span class="det-row-v">${cat.i} ${cat.l}</span></div>`;
+  h += `<div class="det-row"><span class="det-row-l">支払日</span><span class="det-row-v">毎月 ${s.billingDate} 日</span></div>`;
+  h += `<div class="det-row"><span class="det-row-l">ステータス</span><span class="det-row-v" style="color:${s.active?'var(--success)':'var(--danger)'}">${s.active?'✓ 契約中':'✕ 停止中'}</span></div>`;
+  if (s.note) h += `<div class="det-row" style="border:none"><span class="det-row-l">メモ</span><span class="det-row-v" style="font-size:13px">${esc(s.note)}</span></div>`;
+  h += `<div style="margin-top:14px">`;
+  h += `<button class="btn-sec" data-action="edit">✏️ 編集する</button>`;
+  if (s.active) h += `<button class="btn-danger" data-action="ask-cancel">🚫 解約を検討する</button>`;
+  else h += `<button class="btn-green" data-action="reactivate">✓ 再契約する</button>`;
+  h += `</div></div></div>`;
+  return h;
+}
+
+// ============================================================
+//  Edit Form Modal
+// ============================================================
+function renderEditForm() {
+  const s = editSub;
+  let h = `<div class="overlay" data-close="edit"><div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-bar"></div><div class="modal-title">✏️ サブスクを編集</div>`;
+  h += `<div class="fg"><label class="fl">サービス名</label><input class="fi" id="e-name" value="${esc(s.name)}"></div>`;
+  h += `<div class="fg"><label class="fl">月額料金（円）</label><input class="fi" id="e-price" type="number" value="${s.price}"></div>`;
+  h += `<div class="fg"><label class="fl">カテゴリ</label><div class="cat-grid">`;
+  Object.entries(CAT).forEach(([k,c])=>{
+    h += `<button class="cat-btn ${k===s.category?'on':''}" data-ecat="${k}"><em>${c.i}</em>${c.l}</button>`;
+  });
+  h += `</div></div>`;
+  h += `<div class="fg"><label class="fl">契約者</label><div class="user-btns">
+    <button class="ubtn ${s.user==='パパ'?'sel-p':''}" data-euser="パパ">👨 パパ</button>
+    <button class="ubtn ${s.user==='ママ'?'sel-m':''}" data-euser="ママ">👩 ママ</button>
+  </div></div>`;
+  h += `<div class="fg"><label class="fl">支払日</label><input class="fi" id="e-date" type="number" min="1" max="31" value="${s.billingDate}"></div>`;
+  h += `<div class="fg"><label class="fl">メモ</label><input class="fi" id="e-note" value="${esc(s.note||'')}"></div>`;
+  h += `<button class="btn-primary" data-action="save-edit">保存する</button>`;
+  h += `<button class="btn-danger" data-action="delete-sub">🗑️ 完全に削除する</button>`;
+  h += `<button class="btn-sec" data-close="edit">キャンセル</button>`;
+  h += `</div></div>`;
+  return h;
+}
+
+// ============================================================
+//  Confirm Modal
+// ============================================================
+function renderConfirm() {
+  const s = confirmSub;
+  return `<div class="confirm-overlay" data-close="confirm"><div class="confirm-box" onclick="event.stopPropagation()">
+    <div class="confirm-icon">🤔</div>
+    <div class="confirm-title">${esc(s.name)} を停止しますか？</div>
+    <div class="confirm-msg">月 ¥${s.price.toLocaleString()} / 年 ¥${(s.price*12).toLocaleString()} の節約になります</div>
+    <div class="confirm-btns">
+      <button class="cbtn cbtn-cancel" data-close="confirm">やめる</button>
+      <button class="cbtn cbtn-ok" data-action="do-cancel">停止する</button>
+    </div>
+  </div></div>`;
+}
+
+// ============================================================
+//  Bottom Nav
+// ============================================================
+function renderBottomNav() {
+  return `<div class="bnav">
+    <button class="bnav-item ${view==='dashboard'?'on':''}" data-nav="dashboard"><span>📊</span>ダッシュボード</button>
+    <button class="bnav-add" data-nav="add">＋</button>
+    <button class="bnav-item ${view==='list'?'on':''}" data-nav="list"><span>📋</span>一覧</button>
+  </div>`;
+}
+
+// ============================================================
+//  Event Binding
+// ============================================================
+function bindEvents() {
+  // Filter pills
+  document.querySelectorAll('[data-filter]').forEach(el => {
+    el.onclick = () => { filter = el.dataset.filter; render(); };
+  });
+
+  // Nav
+  document.querySelectorAll('[data-nav]').forEach(el => {
+    el.onclick = () => { view = el.dataset.nav; render(); };
+  });
+
+  // Detail
+  document.querySelectorAll('[data-detail]').forEach(el => {
+    el.onclick = () => { detailSub = subs.find(s=>String(s.id)===el.dataset.detail); render(); };
+  });
+
+  // Close overlays
+  document.querySelectorAll('[data-close]').forEach(el => {
+    el.onclick = (e) => {
+      if (e.target !== el) return;
+      if (el.dataset.close==='detail') detailSub = null;
+      if (el.dataset.close==='edit') editSub = null;
+      if (el.dataset.close==='confirm') confirmSub = null;
+      render();
+    };
+  });
+
+  // Detail actions
+  const editBtn = document.querySelector('[data-action="edit"]');
+  if (editBtn) editBtn.onclick = () => { editSub = {...detailSub}; detailSub = null; render(); };
+
+  const askCancel = document.querySelector('[data-action="ask-cancel"]');
+  if (askCancel) askCancel.onclick = () => { confirmSub = detailSub; detailSub = null; render(); };
+
+  const reactivate = document.querySelector('[data-action="reactivate"]');
+  if (reactivate) reactivate.onclick = async () => {
+    await toggleSub(detailSub.id, true);
+    detailSub = null;
+  };
+
+  const doCancel = document.querySelector('[data-action="do-cancel"]');
+  if (doCancel) doCancel.onclick = async () => {
+    await toggleSub(confirmSub.id, false);
+    confirmSub = null;
+  };
+
+  // Add form
+  const cancelAdd = document.querySelector('[data-action="cancel-add"]');
+  if (cancelAdd) cancelAdd.onclick = () => { view = 'dashboard'; render(); };
+
+  // Category select (add)
+  document.querySelectorAll('[data-cat]').forEach(el => {
+    el.onclick = () => {
+      document.querySelectorAll('[data-cat]').forEach(b=>b.classList.remove('on'));
+      el.classList.add('on');
+    };
+  });
+
+  // User select (add)
+  document.querySelectorAll('[data-user]').forEach(el => {
+    el.onclick = () => {
+      document.querySelectorAll('[data-user]').forEach(b=>{b.classList.remove('sel-p','sel-m')});
+      el.classList.add(el.dataset.user==='パパ'?'sel-p':'sel-m');
+    };
+  });
+
+  // Submit add
+  const submitAdd = document.querySelector('[data-action="submit-add"]');
+  if (submitAdd) submitAdd.onclick = async () => {
+    const name = document.getElementById('f-name').value.trim();
+    const price = parseInt(document.getElementById('f-price').value);
+    if (!name || !price) { toast('サービス名と料金を入力してください'); return; }
+    const category = document.querySelector('[data-cat].on')?.dataset.cat || 'other';
+    const user = document.querySelector('.ubtn.sel-p') ? 'パパ' : 'ママ';
+    const billingDate = parseInt(document.getElementById('f-date').value) || 1;
+    const note = document.getElementById('f-note').value.trim();
+    const newSub = {name,price,category,user,billingDate,active:true,note};
+
+    if (GAS_URL === 'demo') {
+      newSub.id = String(Date.now());
+      subs.push(newSub);
+      view = 'dashboard'; toast('追加しました'); render();
+    } else {
+      try {
+        const res = await apiPost({action:'add',data:newSub});
+        toast('追加しました');
+        view = 'dashboard';
+        await loadData();
+      } catch(e) { toast('追加に失敗しました'); }
+    }
+  };
+
+  // Edit form
+  document.querySelectorAll('[data-ecat]').forEach(el => {
+    el.onclick = () => {
+      document.querySelectorAll('[data-ecat]').forEach(b=>b.classList.remove('on'));
+      el.classList.add('on');
+      editSub.category = el.dataset.ecat;
+    };
+  });
+  document.querySelectorAll('[data-euser]').forEach(el => {
+    el.onclick = () => {
+      document.querySelectorAll('[data-euser]').forEach(b=>{b.classList.remove('sel-p','sel-m')});
+      el.classList.add(el.dataset.euser==='パパ'?'sel-p':'sel-m');
+      editSub.user = el.dataset.euser;
+    };
+  });
+
+  const saveEdit = document.querySelector('[data-action="save-edit"]');
+  if (saveEdit) saveEdit.onclick = async () => {
+    editSub.name = document.getElementById('e-name').value.trim();
+    editSub.price = parseInt(document.getElementById('e-price').value);
+    editSub.billingDate = parseInt(document.getElementById('e-date').value) || 1;
+    editSub.note = document.getElementById('e-note').value.trim();
+    if (!editSub.name || !editSub.price) { toast('名前と料金は必須です'); return; }
+
+    if (GAS_URL === 'demo') {
+      subs = subs.map(s=>s.id===editSub.id?{...editSub}:s);
+      editSub = null; toast('保存しました'); render();
+    } else {
+      try {
+        await apiPost({action:'update',data:editSub});
+        toast('保存しました'); editSub = null; await loadData();
+      } catch(e) { toast('保存に失敗しました'); }
+    }
+  };
+
+  const deleteSub = document.querySelector('[data-action="delete-sub"]');
+  if (deleteSub) deleteSub.onclick = async () => {
+    if (GAS_URL === 'demo') {
+      subs = subs.filter(s=>s.id!==editSub.id);
+      editSub = null; toast('削除しました'); render();
+    } else {
+      try {
+        await apiPost({action:'delete',id:editSub.id});
+        toast('削除しました'); editSub = null; await loadData();
+      } catch(e) { toast('削除に失敗しました'); }
+    }
+  };
+}
+
+async function toggleSub(id, active) {
+  if (GAS_URL === 'demo') {
+    subs = subs.map(s=>s.id===id?{...s,active}:s);
+    toast(active?'再契約しました':'停止しました'); render();
+  } else {
+    const sub = subs.find(s=>String(s.id)===String(id));
+    if (!sub) return;
+    try {
+      await apiPost({action:'update',data:{...sub,active}});
+      toast(active?'再契約しました':'停止しました');
+      await loadData();
+    } catch(e) { toast('更新に失敗しました'); render(); }
+  }
+}
+
+// ============================================================
+//  Utility
+// ============================================================
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ============================================================
+//  Init
+// ============================================================
+render();
+if (GAS_URL && GAS_URL !== 'demo') loadData();
+
+// Service Worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
