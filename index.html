@@ -293,37 +293,41 @@ let loading = false;
 // ============================================================
 //  API helpers
 // ============================================================
-async function apiGet() {
-  const res = await fetch(GAS_URL);
-  const json = await res.json();
-  return json.data || [];
-}
+// ============================================================
+//  API — すべて GET リクエストで処理
+//
+//  GAS ウェブアプリは 302 リダイレクトを挟むため、
+//  POST だと CORS エラーが起きやすい。
+//  全操作を GET + クエリパラメータで処理することで回避。
+// ============================================================
 
-async function apiPost(body) {
-  // GAS の doPost は redirect を返すため mode: 'no-cors' が必要な場合がある
-  // しかし 'no-cors' だとレスポンスが読めないため、まずは通常 fetch を試す
+async function apiCall(action, payload) {
+  let url = GAS_URL + '?action=' + encodeURIComponent(action);
+  if (payload) {
+    url += '&payload=' + encodeURIComponent(JSON.stringify(payload));
+  }
+  const res = await fetch(url, { redirect: 'follow' });
+
+  // GAS はリダイレクト後に text/plain や text/html を返す場合があるので
+  // まずテキストとして取得してから JSON パース
+  const text = await res.text();
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'text/plain'},
-      body: JSON.stringify(body),
-    });
-    return await res.json();
-  } catch {
-    // リダイレクト対応: follow redirect
-    const res2 = await fetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      redirect: 'follow',
-    });
-    try { return await res2.json(); } catch { return {status:'ok'}; }
+    return JSON.parse(text);
+  } catch(e) {
+    console.error('JSON parse error:', text.substring(0, 200));
+    throw new Error('APIレスポンスの解析に失敗しました');
   }
 }
 
 async function loadData() {
   loading = true; render();
   try {
-    subs = await apiGet();
+    const result = await apiCall('list');
+    if (result.status === 'ok') {
+      subs = result.data || [];
+    } else {
+      toast('エラー: ' + (result.message || '不明なエラー'));
+    }
   } catch(e) {
     console.error(e);
     toast('データの読み込みに失敗しました');
@@ -759,7 +763,7 @@ function bindEvents() {
       view = 'dashboard'; toast('追加しました'); render();
     } else {
       try {
-        const res = await apiPost({action:'add',data:newSub});
+        const res = await apiCall('add', newSub);
         toast('追加しました');
         view = 'dashboard';
         await loadData();
@@ -796,7 +800,7 @@ function bindEvents() {
       editSub = null; toast('保存しました'); render();
     } else {
       try {
-        await apiPost({action:'update',data:editSub});
+        await apiCall('update', editSub);
         toast('保存しました'); editSub = null; await loadData();
       } catch(e) { toast('保存に失敗しました'); }
     }
@@ -809,7 +813,7 @@ function bindEvents() {
       editSub = null; toast('削除しました'); render();
     } else {
       try {
-        await apiPost({action:'delete',id:editSub.id});
+        await apiCall('delete', {id: editSub.id});
         toast('削除しました'); editSub = null; await loadData();
       } catch(e) { toast('削除に失敗しました'); }
     }
@@ -824,7 +828,7 @@ async function toggleSub(id, active) {
     const sub = subs.find(s=>String(s.id)===String(id));
     if (!sub) return;
     try {
-      await apiPost({action:'update',data:{...sub,active}});
+      await apiCall('update', {...sub, active});
       toast(active?'再契約しました':'停止しました');
       await loadData();
     } catch(e) { toast('更新に失敗しました'); render(); }
