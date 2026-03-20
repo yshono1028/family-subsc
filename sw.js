@@ -1,12 +1,12 @@
-const CACHE = 'subscrip-v1';
-const ASSETS = ['./index.html', './manifest.json'];
+const CACHE = 'subscrip-v2';
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  // 新しい SW を即座に有効化（待機しない）
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
+  // 古いキャッシュを全削除
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
@@ -16,13 +16,20 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // API calls: network first
+  // GAS API: 常にネットワーク（キャッシュしない）
   if (e.request.url.includes('script.google.com')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    e.respondWith(fetch(e.request));
     return;
   }
-  // Assets: cache first
+
+  // アプリ本体: ネットワーク優先 → 成功したらキャッシュ更新 → 失敗時のみキャッシュ
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    fetch(e.request)
+      .then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
