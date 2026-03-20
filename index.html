@@ -260,8 +260,7 @@ input,select{font-family:var(--font-ja)}
 // ============================================================
 //  CONFIG — Google Apps Script URL
 // ============================================================
-const STORAGE_KEY = 'subscrip_gas_url';
-let GAS_URL = localStorage.getItem(STORAGE_KEY) || '';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxUiSvixMJxk31CVNI-EgS8HJJhCuZ19koef6HwEh8CdxPbe8BDusHEqTe2pQgksGk6sw/exec';
 
 // ============================================================
 //  Categories
@@ -373,14 +372,6 @@ function donutSVG(data, size=150) {
 // ============================================================
 function render() {
   const app = document.getElementById('app');
-
-  // --- Setup screen ---
-  if (!GAS_URL) {
-    view = 'setup';
-    app.innerHTML = renderSetup();
-    bindSetup();
-    return;
-  }
 
   let html = '';
 
@@ -848,7 +839,7 @@ function esc(s) {
 //  Init
 // ============================================================
 render();
-if (GAS_URL && GAS_URL !== 'demo') loadData();
+loadData();
 
 // Service Worker registration
 if ('serviceWorker' in navigator) {
